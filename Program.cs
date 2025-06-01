@@ -1,18 +1,26 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Hosting;
-using RealTimeChatApp.Hubs;
+using Microsoft.Extensions.Hosting;
+using Microsoft.EntityFrameworkCore;
+using RealTimeChatApp2025.Data;
+using RealTimeChatApp2025.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add SignalR service
+// Add SignalR + Controllers + Razor Pages
 builder.Services.AddSignalR();
+builder.Services.AddRazorPages();
+
+// 📦 Add EF Core + SQLite
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite("Data Source=chat.db"));
 
 var app = builder.Build();
 
-app.MapGet("/", () => "RealTimeChatApp2025 running!");
+app.UseStaticFiles();
+app.UseRouting();
 
-// Map the chat hub
-app.MapHub<ChatHub>("/chatHub");
+app.MapRazorPages();
+app.MapHub<ChatHub>("/chathub");
 
 app.Run();
