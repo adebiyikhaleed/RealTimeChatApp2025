@@ -1,47 +1,50 @@
 using Microsoft.AspNetCore.SignalR;
+using RealTimeChatApp2025.Data;
+using RealTimeChatApp2025.Models;
 using System;
-using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace RealTimeChatApp2025.Hubs
 {
     public class ChatHub : Hub
     {
-        // 🧠 In-memory message storage (shared across users)
-        private static List<ChatMessage> _messageHistory = new();
+        private readonly AppDbContext _context;
+
+        public ChatHub(AppDbContext context)
+        {
+            _context = context;
+        }
 
         public async Task SendMessage(string user, string message)
         {
-            var timestamp = DateTime.UtcNow;
-
             var chatMessage = new ChatMessage
             {
                 User = user,
                 Message = message,
-                Timestamp = timestamp
+                Timestamp = DateTime.UtcNow
             };
 
-            _messageHistory.Add(chatMessage);
+            _context.ChatMessages.Add(chatMessage);
+            await _context.SaveChangesAsync();
 
-            await Clients.All.SendAsync("ReceiveMessage", user, message, timestamp);
+            await Clients.All.SendAsync("ReceiveMessage", user, message, chatMessage.Timestamp);
         }
 
         public override async Task OnConnectedAsync()
         {
-            // When a user connects, send them existing chat history
-            foreach (var msg in _messageHistory)
+            // Send the latest 50 messages (you can change the number)
+            var messages = _context.ChatMessages
+                .OrderBy(m => m.Timestamp)
+                .Take(50)
+                .ToList();
+
+            foreach (var msg in messages)
             {
                 await Clients.Caller.SendAsync("ReceiveMessage", msg.User, msg.Message, msg.Timestamp);
             }
 
             await base.OnConnectedAsync();
         }
-    }
-
-    public class ChatMessage
-    {
-        public string User { get; set; }
-        public string Message { get; set; }
-        public DateTime Timestamp { get; set; }
     }
 }
