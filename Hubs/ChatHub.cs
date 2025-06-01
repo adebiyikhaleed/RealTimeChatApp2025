@@ -1,13 +1,15 @@
 using Microsoft.AspNetCore.SignalR;
+using System;
 using System.Threading.Tasks;
 
-namespace RealTimeChatApp.Hubs
+namespace RealTimeChatApp2025.Hubs
 {
     public class ChatHub : Hub
     {
         public async Task SendMessage(string user, string message)
         {
-            await Clients.All.SendAsync("ReceiveMessage", user, message);
+            var timestamp = DateTime.UtcNow;
+            await Clients.All.SendAsync("ReceiveMessage", user, message, timestamp);
         }
     }
 }
