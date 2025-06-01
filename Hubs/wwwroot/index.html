@@ -1,42 +1,139 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8" />
     <title>RealTimeChatApp2025</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.0/signalr.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            background: #f4f7f9;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+        #chatWindow {
+            border: 1px solid #ccc;
+            background: #fff;
+            height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+        .message {
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: #e1f5fe;
+            position: relative;
+        }
+        .message.self {
+            background: #c8e6c9;
+            text-align: right;
+        }
+        .message .user {
+            font-weight: bold;
+            color: #007acc;
+        }
+        .message .timestamp {
+            font-size: 0.75em;
+            color: #555;
+            position: absolute;
+            bottom: 4px;
+            right: 10px;
+        }
+        #inputArea {
+            display: flex;
+            gap: 10px;
+        }
+        #userInput, #messageInput {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 1em;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+        #sendBtn {
+            padding: 10px 20px;
+            font-size: 1em;
+            background-color: #007acc;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        #sendBtn:hover {
+            background-color: #005f99;
+        }
+    </style>
 </head>
 <body>
     <h2>RealTimeChatApp2025 - Chat</h2>
 
-    <input type="text" id="userInput" placeholder="Your name" />
-    <br />
-    <input type="text" id="messageInput" placeholder="Your message" />
-    <button onclick="sendMessage()">Send</button>
+    <div id="chatWindow"></div>
 
-    <ul id="messagesList"></ul>
+    <div id="inputArea">
+        <input type="text" id="userInput" placeholder="Your name" />
+        <input type="text" id="messageInput" placeholder="Your message" />
+        <button id="sendBtn">Send</button>
+    </div>
 
     <script>
         const connection = new signalR.HubConnectionBuilder()
             .withUrl("/chatHub")
             .build();
 
-        connection.on("ReceiveMessage", (user, message) => {
-            const li = document.createElement("li");
-            li.textContent = `${user}: ${message}`;
-            document.getElementById("messagesList").appendChild(li);
+        const chatWindow = document.getElementById('chatWindow');
+        const userInput = document.getElementById('userInput');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        function formatTimestamp(date) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        connection.on("ReceiveMessage", (user, message, timestamp) => {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('message');
+            if (user === userInput.value.trim()) {
+                msgDiv.classList.add('self');
+            }
+            msgDiv.innerHTML = `
+                <span class="user">${user}</span>: ${message}
+                <span class="timestamp">${formatTimestamp(new Date(timestamp))}</span>
+            `;
+            chatWindow.appendChild(msgDiv);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
         });
 
         connection.start().catch(err => console.error(err.toString()));
 
         function sendMessage() {
-            const user = document.getElementById("userInput").value;
-            const message = document.getElementById("messageInput").value;
-            if (user && message) {
-                connection.invoke("SendMessage", user, message).catch(err => console.error(err.toString()));
-                document.getElementById("messageInput").value = "";
-            } else {
-                alert("Enter both your name and message.");
+            const user = userInput.value.trim();
+            const message = messageInput.value.trim();
+            if (!user) {
+                alert("Please enter your name.");
+                return;
             }
+            if (!message) {
+                alert("Please enter a message.");
+                return;
+            }
+            connection.invoke("SendMessage", user, message).catch(err => console.error(err.toString()));
+            messageInput.value = "";
+            messageInput.focus();
         }
+
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
     </script>
 </body>
 </html>
